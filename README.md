@@ -67,3 +67,5 @@ Sliders use practical UI ranges rather than guaranteed client engine limits. The
 - Removing the addon does not automatically undo graphics settings you already applied.
 
 Version: **1.1.4**.
+
+Note: This addon was built with the use of AI.
