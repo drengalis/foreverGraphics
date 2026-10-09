@@ -2,6 +2,8 @@
 
 A World of Warcraft: Forever (Camelot, interface `16001`) addon that exposes eight advanced graphics console variables through an in-game control panel.
 
+<img width="1852" height="1144" alt="image" src="https://github.com/user-attachments/assets/f23e04dc-ef35-4202-80fa-e6863f986b78" />
+
 ## Features
 
 - Eight sliders with minimum and maximum values displayed alongside the track.
