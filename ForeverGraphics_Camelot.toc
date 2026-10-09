@@ -1,0 +1,8 @@
+## Interface: 16001
+## Title: Forever Graphics
+## Notes: Eight advanced graphics CVar sliders with info tooltips and individual default resets.
+## Author: Custom
+## Version: 1.1.4
+## SavedVariables: ForeverGraphicsDB
+
+ForeverGraphics.lua
