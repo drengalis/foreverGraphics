@@ -26,7 +26,7 @@ A World of Warcraft: Forever (Camelot, interface `16001`) addon that exposes eig
        └── ForeverGraphics/
            ├── ForeverGraphics_Camelot.toc
            ├── ForeverGraphics.lua
-           └── README.txt
+           └── README.md
    ```
 
 3. Enable **Forever Graphics** from WoW's AddOns list.

@@ -1,0 +1,73 @@
+# Publishes a GitHub release whenever the version in ForeverGraphics_Camelot.toc changes on main.
+#
+# To release: bump "## Version:" in ForeverGraphics_Camelot.toc, add release-notes/vX.Y.Z.md,
+# and push to main. The workflow creates tag vX.Y.Z, builds ForeverGraphics-vX.Y.Z.zip
+# (containing a ForeverGraphics folder ready for Interface\AddOns) and publishes the release.
+# If the release already exists, nothing happens. It can also be run by hand from the
+# Actions tab.
+
+name: Release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ForeverGraphics_Camelot.toc
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read version from .toc
+        id: version
+        run: |
+          version=$(sed -n 's/^## Version:[[:space:]]*\([^[:space:]]*\).*/\1/p' ForeverGraphics_Camelot.toc | tr -d '\r')
+          if [ -z "$version" ]; then
+            echo "No '## Version:' line found in ForeverGraphics_Camelot.toc" >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=v$version" >> "$GITHUB_OUTPUT"
+
+      - name: Check whether this version is already released
+        id: exists
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "${{ steps.version.outputs.tag }}" >/dev/null 2>&1; then
+            echo "Release ${{ steps.version.outputs.tag }} already exists; skipping."
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build zip
+        if: steps.exists.outputs.exists == 'false'
+        run: |
+          mkdir -p dist/ForeverGraphics
+          cp ForeverGraphics_Camelot.toc *.lua README.md dist/ForeverGraphics/
+          cd dist
+          zip -r "ForeverGraphics-${{ steps.version.outputs.tag }}.zip" ForeverGraphics
+
+      - name: Publish release
+        if: steps.exists.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${{ steps.version.outputs.tag }}"
+          notes="release-notes/$tag.md"
+          if [ -f "$notes" ]; then
+            notes_args=(--notes-file "$notes")
+          else
+            notes_args=(--generate-notes)
+          fi
+          gh release create "$tag" "dist/ForeverGraphics-$tag.zip" \
+            --target "$GITHUB_SHA" \
+            --title "Forever Graphics $tag" \
+            "${notes_args[@]}"
