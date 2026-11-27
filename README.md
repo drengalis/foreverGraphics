@@ -13,6 +13,7 @@ A World of Warcraft: Forever (Camelot, interface `16001`) addon that exposes eig
 - An **info** icon with a description and performance notes for every setting.
 - **Apply Suggested (8)** and **Reset All to Default**.
 - Draggable panel with saved position.
+- Minimap button (click to open the panel, drag to move it around the minimap) that can be turned on or off from the panel or with `/fgfx minimap`.
 - No automatic graphics changes when logging in.
 
 ## Installation
@@ -41,6 +42,7 @@ A World of Warcraft: Forever (Camelot, interface `16001`) addon that exposes eig
 | `/fgfx max` | Apply all eight suggested settings. |
 | `/fgfx reset` | Prompt to reset all eight settings to their listed defaults. |
 | `/fgfx refresh` | Re-read all current client values and discard pending slider edits. |
+| `/fgfx minimap` | Show or hide the minimap button. |
 
 ## Settings
 
@@ -66,6 +68,6 @@ Sliders use practical UI ranges rather than guaranteed client engine limits. The
 - A few visual settings may not take full effect until changing zones, relogging, or restarting the client.
 - Removing the addon does not automatically undo graphics settings you already applied.
 
-Version: **1.1.4**.
+Version: **1.2.0**.
 
 Note: This addon was built with the use of AI.

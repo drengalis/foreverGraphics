@@ -57,6 +57,11 @@ local wikiSettings = {
 local mainFrame
 local rows = {}
 local statusText
+local minimapButton
+local minimapCheckbox
+
+local MINIMAP_ICON = "Interface\\Icons\\INV_Misc_Spyglass_03"
+local MINIMAP_DEFAULT_ANGLE = 200
 
 local function CurrentCVar(name)
     if C_CVar and type(C_CVar.GetCVar) == "function" then
@@ -295,6 +300,108 @@ local function SaveFramePosition(frame)
     end
 end
 
+-- Minimap button -------------------------------------------------------------
+
+local ToggleMainFrame -- defined after CreateUI
+
+local function MinimapSettings()
+    if type(ForeverGraphicsDB) ~= "table" then ForeverGraphicsDB = {} end
+    if type(ForeverGraphicsDB.minimap) ~= "table" then
+        ForeverGraphicsDB.minimap = { hide = false, angle = MINIMAP_DEFAULT_ANGLE }
+    end
+    local settings = ForeverGraphicsDB.minimap
+    if type(settings.angle) ~= "number" then settings.angle = MINIMAP_DEFAULT_ANGLE end
+    return settings
+end
+
+local function UpdateMinimapButtonPosition()
+    if not minimapButton then return end
+    local angle = math.rad(MinimapSettings().angle)
+    local radius = (Minimap:GetWidth() / 2) + 10
+    minimapButton:ClearAllPoints()
+    minimapButton:SetPoint("CENTER", Minimap, "CENTER", math.cos(angle) * radius, math.sin(angle) * radius)
+end
+
+local function MinimapButtonDragUpdate()
+    local mx, my = Minimap:GetCenter()
+    local cx, cy = GetCursorPosition()
+    local scale = Minimap:GetEffectiveScale()
+    cx, cy = cx / scale, cy / scale
+    MinimapSettings().angle = math.deg(math.atan2(cy - my, cx - mx)) % 360
+    UpdateMinimapButtonPosition()
+end
+
+local function CreateMinimapButton()
+    if minimapButton or not Minimap then return end
+    local button = CreateFrame("Button", "ForeverGraphicsMinimapButton", Minimap)
+    minimapButton = button
+    button:SetSize(31, 31)
+    button:SetFrameStrata("MEDIUM")
+    button:SetFrameLevel(8)
+    button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    button:RegisterForDrag("LeftButton")
+    button:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
+
+    local background = button:CreateTexture(nil, "BACKGROUND")
+    background:SetSize(20, 20)
+    background:SetTexture("Interface\\Minimap\\UI-Minimap-Background")
+    background:SetPoint("TOPLEFT", button, "TOPLEFT", 7, -5)
+
+    local icon = button:CreateTexture(nil, "ARTWORK")
+    icon:SetSize(17, 17)
+    icon:SetTexture(MINIMAP_ICON)
+    icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+    icon:SetPoint("TOPLEFT", button, "TOPLEFT", 7, -6)
+    button.icon = icon
+
+    local border = button:CreateTexture(nil, "OVERLAY")
+    border:SetSize(53, 53)
+    border:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
+    border:SetPoint("TOPLEFT", button, "TOPLEFT", 0, 0)
+
+    button:SetScript("OnClick", function()
+        ToggleMainFrame()
+    end)
+    button:SetScript("OnDragStart", function(self)
+        self:LockHighlight()
+        GameTooltip:Hide()
+        self:SetScript("OnUpdate", MinimapButtonDragUpdate)
+    end)
+    button:SetScript("OnDragStop", function(self)
+        self:SetScript("OnUpdate", nil)
+        self:UnlockHighlight()
+    end)
+    button:SetScript("OnMouseDown", function() icon:SetPoint("TOPLEFT", button, "TOPLEFT", 8, -7) end)
+    button:SetScript("OnMouseUp", function() icon:SetPoint("TOPLEFT", button, "TOPLEFT", 7, -6) end)
+    button:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+        GameTooltip:ClearLines()
+        GameTooltip:SetText("Forever Graphics", 1.0, 0.83, 0.25)
+        GameTooltip:AddLine("Click to open or close the settings panel.", 1, 1, 1, true)
+        GameTooltip:AddLine("Drag to move this button around the minimap.", 0.77, 0.88, 1.0, true)
+        GameTooltip:AddLine("Hide it with /fgfx minimap or the panel checkbox.", 0.7, 0.7, 0.7, true)
+        GameTooltip:Show()
+    end)
+    button:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
+    UpdateMinimapButtonPosition()
+    if MinimapSettings().hide then button:Hide() else button:Show() end
+end
+
+local function SetMinimapButtonShown(show)
+    MinimapSettings().hide = not show
+    if show then
+        CreateMinimapButton()
+        if minimapButton then
+            UpdateMinimapButtonPosition()
+            minimapButton:Show()
+        end
+    elseif minimapButton then
+        minimapButton:Hide()
+    end
+    if minimapCheckbox then minimapCheckbox:SetChecked(show) end
+end
+
 local function CreateUI()
     local frame = CreateFrame("Frame", "ForeverGraphicsPanel", UIParent, "BackdropTemplate")
     mainFrame = frame
@@ -449,6 +556,16 @@ local function CreateUI()
         RefreshAll(true)
         Message("Current values reloaded; pending slider edits discarded.", false)
     end)
+    minimapCheckbox = CreateFrame("CheckButton", nil, frame, "UICheckButtonTemplate")
+    minimapCheckbox:SetSize(26, 26)
+    minimapCheckbox:SetPoint("TOPLEFT", frame, "TOPLEFT", 550, -553)
+    local checkboxLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    checkboxLabel:SetPoint("LEFT", minimapCheckbox, "RIGHT", 2, 1)
+    checkboxLabel:SetText("Show minimap button")
+    minimapCheckbox:SetScript("OnClick", function(self)
+        SetMinimapButtonShown(self:GetChecked() and true or false)
+    end)
+
     MakeButton(frame, "Close", 100, 29, 904, -552, function()
         frame:Hide()
     end)
@@ -462,9 +579,15 @@ local function CreateUI()
     end)
     frame:SetScript("OnShow", function()
         RefreshAll(false)
+        minimapCheckbox:SetChecked(not MinimapSettings().hide)
     end)
     RefreshAll(true)
     return frame
+end
+
+ToggleMainFrame = function()
+    if not mainFrame then CreateUI() end
+    if mainFrame:IsShown() then mainFrame:Hide() else mainFrame:Show() end
 end
 
 StaticPopupDialogs["FOREVER_GRAPHICS_RESET_ALL"] = {
@@ -492,10 +615,14 @@ SlashCmdList["FOREVERGRAPHICS"] = function(message)
     elseif message == "refresh" then
         mainFrame:Show()
         RefreshAll(true)
+    elseif message == "minimap" then
+        local show = MinimapSettings().hide
+        SetMinimapButtonShown(show)
+        print("Forever Graphics: minimap button " .. (show and "shown." or "hidden. Type /fgfx minimap to show it again."))
     elseif message == "" then
-        if mainFrame:IsShown() then mainFrame:Hide() else mainFrame:Show() end
+        ToggleMainFrame()
     else
-        print("Forever Graphics: /fgfx to toggle, /fgfx max for suggested values, /fgfx reset to defaults, /fgfx refresh to reread CVars.")
+        print("Forever Graphics: /fgfx to toggle, /fgfx max for suggested values, /fgfx reset to defaults, /fgfx refresh to reread CVars, /fgfx minimap to show/hide the minimap button.")
     end
 end
 
@@ -504,5 +631,7 @@ startup:RegisterEvent("ADDON_LOADED")
 startup:SetScript("OnEvent", function(self, event, name)
     if name ~= ADDON_NAME then return end
     if type(ForeverGraphicsDB) ~= "table" then ForeverGraphicsDB = {} end
+    MinimapSettings()
+    CreateMinimapButton()
     self:UnregisterEvent("ADDON_LOADED")
 end)
